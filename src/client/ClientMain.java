@@ -15,6 +15,7 @@ public class ClientMain {
 
     public ClientMain() throws IOException {
         MySocket mySocket = new MySocket("localhost", 2011);
+        init(mySocket);
         loadEvents(mySocket);
         start(mySocket);
     }
@@ -190,6 +191,7 @@ public class ClientMain {
                         }
 
                         socket.emit(Identifier.CHAT_REQUEST_REPLY, true);
+                        break;
                     }
                     case "deny": {
                         if (!connected) {
@@ -203,6 +205,11 @@ public class ClientMain {
                         }
 
                         socket.emit(Identifier.CHAT_REQUEST_REPLY, false);
+                        break;
+                    }
+                    default: {
+                        System.out.println("Please check out \"/help\" for a list of valid commands.");
+                        break;
                     }
                 }
             } else {

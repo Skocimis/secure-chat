@@ -22,9 +22,11 @@ public class MySocket {
         Thread listenerThread = new Thread(socketListenerThread);
         listenerThread.start();
     }
-    public int removeAllListeners(Identifier identifier){
+
+    public int removeAllListeners(Identifier identifier) {
         return socketListenerThread.removeAllListeners(identifier);
     }
+
     public int on(Identifier identifier, Function<Serializable, Object> callback) {
         return socketListenerThread.on(identifier, callback);
     }
