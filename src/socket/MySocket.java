@@ -1,5 +1,7 @@
 package socket;
 
+import model.Identifier;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.Socket;
@@ -14,18 +16,24 @@ public class MySocket {
         Thread listenerThread = new Thread(socketListenerThread);
         listenerThread.start();
     }
-    public MySocket(SocketListenerThread socketListenerThread){
+
+    public MySocket(SocketListenerThread socketListenerThread) {
         this.socketListenerThread = socketListenerThread;
         Thread listenerThread = new Thread(socketListenerThread);
         listenerThread.start();
     }
-    public int on(String identifier, Function<Serializable, Object> callback){
+    public int removeAllListeners(Identifier identifier){
+        return socketListenerThread.removeAllListeners(identifier);
+    }
+    public int on(Identifier identifier, Function<Serializable, Object> callback) {
         return socketListenerThread.on(identifier, callback);
     }
-    public int once(String identifier, Function<Serializable, Object> callback){
+
+    public int once(Identifier identifier, Function<Serializable, Object> callback) {
         return socketListenerThread.once(identifier, callback);
     }
-    public int emit(String identifier, Serializable data){
+
+    public int emit(Identifier identifier, Serializable data) {
         return socketListenerThread.emit(identifier, data);
     }
 

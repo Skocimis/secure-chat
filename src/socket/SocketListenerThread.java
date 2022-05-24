@@ -1,5 +1,8 @@
 package socket;
 
+import model.Identifier;
+import netscape.javascript.JSObject;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
@@ -8,8 +11,8 @@ import java.util.function.Function;
 
 public class SocketListenerThread implements Runnable {
     protected Socket socket;
-    HashMap<String, List<Function<Serializable, Object>>> callbacks;
-    HashMap<String, List<Function<Serializable, Object>>> callbacksOnce;
+    HashMap<Identifier, List<Function<Serializable, Object>>> callbacks;
+    HashMap<Identifier, List<Function<Serializable, Object>>> callbacksOnce;
     PrintWriter printWriter;
     private boolean running;
 
@@ -20,7 +23,7 @@ public class SocketListenerThread implements Runnable {
         callbacks = new HashMap<>();
         callbacksOnce = new HashMap<>();
     }
-    private void putInMap(HashMap<String, List<Function<Serializable, Object>>> map, String identifier, Function<Serializable, Object> callback){
+    private void putInMap(HashMap<Identifier, List<Function<Serializable, Object>>> map, Identifier identifier, Function<Serializable, Object> callback){
         List<Function<Serializable, Object>> callableList = map.get(identifier);
         if(callableList==null){
             callableList = new ArrayList<>();
@@ -28,18 +31,45 @@ public class SocketListenerThread implements Runnable {
         callableList.add(callback);
         map.put(identifier, callableList);
     }
-    public int on(String identifier, Function<Serializable, Object> callback){
+    public int on(Identifier identifier, Function<Serializable, Object> callback){
         putInMap(callbacks, identifier, callback);
         return  0;
     }
-    public int once(String identifier, Function<Serializable, Object> callback){
+    public int removeAllListeners(Identifier identifier){
+        callbacksOnce.remove(identifier);
+        callbacks.remove(identifier);
+        return 0;
+    }
+    private static Object fromStringS( String s ) throws IOException ,
+            ClassNotFoundException {
+        byte [] data = Base64.getDecoder().decode( s );
+        ObjectInputStream ois = new ObjectInputStream(
+                new ByteArrayInputStream(  data ) );
+        Object o  = ois.readObject();
+        ois.close();
+        return o;
+    }
+
+    private static String toStringS( Serializable o ) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream( baos );
+        oos.writeObject( o );
+        oos.close();
+        return Base64.getEncoder().encodeToString(baos.toByteArray());
+    }
+    public int once(Identifier identifier, Function<Serializable, Object> callback){
         putInMap(callbacksOnce, identifier, callback);
         return  0;
     }
-    public int emit(String identifier, Serializable data){
+    public int emit(Identifier identifier, Serializable data){
         if(!isRunning()) return -1;
-        printWriter.println(identifier);
-        printWriter.println(data);
+        printWriter.println(identifier.toString());
+        try {
+            printWriter.println(toStringS(data));
+        }
+        catch (Exception e){
+            System.out.println("GRESKA PRILIKOM SERIJALIZACIJE");
+        }
         //Acknowledge
         return  0;
     }
@@ -61,12 +91,16 @@ public class SocketListenerThread implements Runnable {
     }
     protected void runMain() throws Exception {
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        String identifier = "";
-        String data = "";
-        while (running&&!identifier.equalsIgnoreCase("disconnect")){
+        String identifierString = "";
+        Identifier identifier=Identifier.EMPTY;
+        String dataString = "";
+        Object data = null;
+        while (running&&identifier!=Identifier.DISCONNECT){
             try {
-                identifier = bufferedReader.readLine();
-                data = bufferedReader.readLine();
+                identifierString = bufferedReader.readLine();
+                identifier = Identifier.valueOf(identifierString);
+                dataString = bufferedReader.readLine();
+                data = fromStringS(dataString);
             }
             catch (NoSuchElementException e){
                 System.out.println("Disconnected");
@@ -75,13 +109,13 @@ public class SocketListenerThread implements Runnable {
             List<Function<Serializable, Object>> callableListOnce = callbacksOnce.get(identifier);
             if(callableListOnce!=null){
                 for(Function<Serializable, Object> func:callableListOnce){
-                    func.apply(data);
+                    func.apply((Serializable) data);
                 }
                 callbacksOnce.remove(identifier);
             }
             if(callableList!=null){
                 for(Function<Serializable, Object> func:callableList){
-                    func.apply(data);
+                    func.apply((Serializable) data);
                 }
             }
 
