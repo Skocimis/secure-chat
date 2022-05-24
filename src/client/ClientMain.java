@@ -20,12 +20,16 @@ public class ClientMain {
         start(mySocket);
     }
 
-    private void init(MySocket socket) {
+    private void login(MySocket socket) {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Please enter your name:");
         String name = scanner.nextLine();
         this.name = name;
         socket.emit(Identifier.CONNECT, name);
+    }
+
+    private void init(MySocket socket) {
+        System.out.println("Please enter your name:");
+        login(socket);
     }
 
     private void loadEvents(MySocket socket) {
@@ -36,6 +40,8 @@ public class ClientMain {
                     System.out.println("You have been connected, check out the available commands with \"/help\".");
                 } else {
                     name = "";
+                    System.out.println("The name you tried to enter already exists. Please try a different name:");
+                    login(socket);
                 }
             }
             return 0;
@@ -77,7 +83,7 @@ public class ClientMain {
 
         socket.on(Identifier.CANCELED, (data) -> {
             if (incoming) {
-                if(data instanceof Integer intt && intt==-1) {
+                if (data instanceof Integer intt && intt == -1) {
                     System.out.println("Use /deny to deny a request.");
                     return 0;
                 }
@@ -222,6 +228,16 @@ public class ClientMain {
                     }
                     default: {
                         System.out.println("Please check out \"/help\" for a list of valid commands.");
+                        break;
+                    }
+                    case "end": {
+
+                        socket.emit(Identifier.END, null);
+                        break;
+                    }
+                    case "exit": {
+
+                        socket.emit(Identifier.EXIT, null);
                         break;
                     }
                 }

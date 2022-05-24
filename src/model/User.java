@@ -46,7 +46,7 @@ public class User {
             otherUser.socket.emit(Identifier.CHAT_REQUEST, name);
             otherUser.socket.once(Identifier.CHAT_REQUEST_REPLY, (data) -> {
                 if (!(data instanceof Boolean affirmative)) return chatReplyError(-2);//Nece da prihvati
-                if (!affirmative){
+                if (!affirmative) {
                     otherUser.state = UserState.CONNECTED;
                     return chatReplyError(-2);
                 }
@@ -69,7 +69,7 @@ public class User {
             return 0;
         };
         Function<Object, Object> cancelListener = (data) -> {
-            System.out.println("STATE POSILJAOCA JE "+state);
+            System.out.println("STATE POSILJAOCA JE " + state);
             if (state != UserState.SENT_REQUEST) return socket.emit(Identifier.CANCELED, -1);
             room.cancelRequest(this);
             socket.emit(Identifier.CANCELED, 0);
@@ -94,7 +94,7 @@ public class User {
             return 0;
         };
         Function<Object, Object> disconnectListener = (data) -> {
-            System.out.println("Disconnected "+name);
+            System.out.println("Disconnected " + name);
             list.remove(name);
             return 0;
         };
