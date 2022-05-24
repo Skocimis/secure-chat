@@ -122,7 +122,7 @@ public class ClientMain {
                         System.out.println("/users       - lists currently active users");
                         System.out.println("Chat related commands:");
                         System.out.println("/chat <name> - sends a request to start a chat with somebody");
-                        System.out.println("/accept>     - accepts an incoming chat request");
+                        System.out.println("/accept     - accepts an incoming chat request");
                         System.out.println("/deny        - denies an incoming chat request");
                         System.out.println("/cancel      - cancels a request");
                         break;
