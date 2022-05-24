@@ -9,21 +9,25 @@ import java.util.function.Function;
 
 public class SocketListenerThread implements Runnable {
     protected Socket socket;
-    HashMap<Identifier, List<Function<Serializable, Object>>> callbacks;
-    HashMap<Identifier, List<Function<Serializable, Object>>> callbacksOnce;
+    HashMap<Identifier, List<Function<Object, Object>>> callbacks;
+    HashMap<Identifier, List<Function<Object, Object>>> callbacksOnce;
+    List<Function<Object, Object>> onDisconnect;
     PrintWriter printWriter;
     private boolean running;
+    private Object disconnectData;
 
     public SocketListenerThread(Socket socket) throws IOException {
         running = true;
         this.socket = socket;
         printWriter = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+        onDisconnect = new ArrayList<>();
         callbacks = new HashMap<>();
         callbacksOnce = new HashMap<>();
+        disconnectData = null;
     }
 
-    private void putInMap(HashMap<Identifier, List<Function<Serializable, Object>>> map, Identifier identifier, Function<Serializable, Object> callback) {
-        List<Function<Serializable, Object>> callableList = map.get(identifier);
+    private void putInMap(HashMap<Identifier, List<Function<Object, Object>>> map, Identifier identifier, Function<Object, Object> callback) {
+        List<Function<Object, Object>> callableList = map.get(identifier);
         if (callableList == null) {
             callableList = new ArrayList<>();
         }
@@ -31,8 +35,13 @@ public class SocketListenerThread implements Runnable {
         map.put(identifier, callableList);
     }
 
-    public int on(Identifier identifier, Function<Serializable, Object> callback) {
-        putInMap(callbacks, identifier, callback);
+    public int on(Identifier identifier, Function<Object, Object> callback) {
+        if(identifier==Identifier.DISCONNECT){
+            onDisconnect.add(callback);
+        }
+        else{
+            putInMap(callbacks, identifier, callback);
+        }
         return 0;
     }
 
@@ -60,16 +69,17 @@ public class SocketListenerThread implements Runnable {
         return Base64.getEncoder().encodeToString(baos.toByteArray());
     }
 
-    public int once(Identifier identifier, Function<Serializable, Object> callback) {
+    public int once(Identifier identifier, Function<Object, Object> callback) {
         putInMap(callbacksOnce, identifier, callback);
         return 0;
     }
 
-    public int emit(Identifier identifier, Serializable data) {
+    public int emit(Identifier identifier, Object data) {
         if (!isRunning()) return -1;
         printWriter.println(identifier.toString());
+        if(!(data instanceof Serializable serializable)) return -1;
         try {
-            printWriter.println(toStringS(data));
+            printWriter.println(toStringS(serializable));
         } catch (Exception e) {
             System.out.println("GRESKA PRILIKOM SERIJALIZACIJE");
         }
@@ -83,7 +93,9 @@ public class SocketListenerThread implements Runnable {
             runMain();
         } catch (Exception e) {
             if (e.getMessage().equals("Connection reset")) {
-                System.out.println("DISCONNECTED");
+                for(Function<Object, Object> onDisconnectFunction : onDisconnect){
+                    onDisconnectFunction.apply(disconnectData);
+                }
                 running = false;
             } else {
                 e.printStackTrace();
@@ -107,21 +119,29 @@ public class SocketListenerThread implements Runnable {
             } catch (NoSuchElementException e) {
                 System.out.println("Disconnected");
             }
-            List<Function<Serializable, Object>> callableList = callbacks.get(identifier);
-            List<Function<Serializable, Object>> callableListOnce = callbacksOnce.get(identifier);
+            List<Function<Object, Object>> callableList = callbacks.get(identifier);
+            List<Function<Object, Object>> callableListOnce = callbacksOnce.get(identifier);
             if (callableListOnce != null) {
-                for (Function<Serializable, Object> func : callableListOnce) {
-                    func.apply((Serializable) data);
+                for (Function<Object, Object> func : callableListOnce) {
+                    func.apply(data);
                 }
                 callbacksOnce.remove(identifier);
             }
             if (callableList != null) {
-                for (Function<Serializable, Object> func : callableList) {
-                    func.apply((Serializable) data);
+                for (Function<Object, Object> func : callableList) {
+                    func.apply(data);
                 }
             }
 
         }
+    }
+
+    public void setDisconnectData(Object disconnectData) {
+        this.disconnectData = disconnectData;
+    }
+
+    public Object getDisconnectData() {
+        return disconnectData;
     }
 
     public boolean isRunning() {

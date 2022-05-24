@@ -15,11 +15,9 @@ public class ServerMain {
                     return mySocket.emit(Identifier.CONNECTED, false);
                 }
                 try {
-                    System.out.println("TRUE");
                     new User(mySocket, name);
                     return mySocket.emit(Identifier.CONNECTED, true);
                 } catch (Exception e) {
-                    System.out.println("FALSE");
                     return mySocket.emit(Identifier.CONNECTED, false);
                 }
             });

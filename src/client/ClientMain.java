@@ -65,6 +65,11 @@ public class ClientMain {
                         waiting = false;
                         break;
                     }
+                    case -4: {
+                        System.out.println("The prompted user is currently trying to start a conversation or has an incoming request, please try again later.");
+                        waiting = false;
+                        break;
+                    }
                 }
             }
             return 0;
@@ -72,6 +77,10 @@ public class ClientMain {
 
         socket.on(Identifier.CANCELED, (data) -> {
             if (incoming) {
+                if(data instanceof Integer intt && intt==-1) {
+                    System.out.println("Use /deny to deny a request.");
+                    return 0;
+                }
                 incoming = false;
                 System.out.println("Incoming request cancelled");
             }
@@ -99,6 +108,7 @@ public class ClientMain {
         });
 
         socket.on(Identifier.CHAT_INIT, (data) -> {
+            System.out.println("Chat started with " + data);
             waiting = false;
             incoming = false;
             speaking = true;
@@ -162,6 +172,7 @@ public class ClientMain {
                             break;
                         }
 
+                        System.out.println("Chat request successfully sent, you can cancel it with \"/cancel\".");
                         waiting = true;
                         socket.emit(Identifier.CHAT, args[1]);
                         break;
@@ -205,6 +216,8 @@ public class ClientMain {
                         }
 
                         socket.emit(Identifier.CHAT_REQUEST_REPLY, false);
+                        incoming = false;
+                        System.out.println("Request denied");
                         break;
                     }
                     default: {

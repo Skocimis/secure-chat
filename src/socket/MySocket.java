@@ -27,11 +27,11 @@ public class MySocket {
         return socketListenerThread.removeAllListeners(identifier);
     }
 
-    public int on(Identifier identifier, Function<Serializable, Object> callback) {
+    public int on(Identifier identifier, Function<Object, Object> callback) {
         return socketListenerThread.on(identifier, callback);
     }
 
-    public int once(Identifier identifier, Function<Serializable, Object> callback) {
+    public int once(Identifier identifier, Function<Object, Object> callback) {
         return socketListenerThread.once(identifier, callback);
     }
 

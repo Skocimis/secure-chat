@@ -33,7 +33,7 @@ public class User {
     }
 
     private void initListeners() {
-        Function<Serializable, Object> chatListeneer = (username) -> {
+        Function<Object, Object> chatListeneer = (username) -> {
             if (state != UserState.CONNECTED) return chatReplyError(-3);//Nije u lobiju
             if (!(username instanceof String otherUserName)) return chatReplyError(-1); //Lose prosledjen string
             User otherUser = list.get(otherUserName);
@@ -46,7 +46,10 @@ public class User {
             otherUser.socket.emit(Identifier.CHAT_REQUEST, name);
             otherUser.socket.once(Identifier.CHAT_REQUEST_REPLY, (data) -> {
                 if (!(data instanceof Boolean affirmative)) return chatReplyError(-2);//Nece da prihvati
-                if (!affirmative) return chatReplyError(-2);
+                if (!affirmative){
+                    otherUser.state = UserState.CONNECTED;
+                    return chatReplyError(-2);
+                }
 
                 state = UserState.IN_CHAT;
                 otherUser.room = room;
@@ -59,19 +62,20 @@ public class User {
             });
             return 0;
         };
-        Function<Serializable, Object> messageListener = (data) -> {
+        Function<Object, Object> messageListener = (data) -> {
             if (state != UserState.IN_CHAT) return 0;
             if (!(data instanceof String message)) return 0;
             room.sendMessage(this, message);
             return 0;
         };
-        Function<Serializable, Object> cancelListener = (data) -> {
+        Function<Object, Object> cancelListener = (data) -> {
+            System.out.println("STATE POSILJAOCA JE "+state);
             if (state != UserState.SENT_REQUEST) return socket.emit(Identifier.CANCELED, -1);
             room.cancelRequest(this);
             socket.emit(Identifier.CANCELED, 0);
             return 0;
         };
-        Function<Serializable, Object> userListListener = (data) -> {
+        Function<Object, Object> userListListener = (data) -> {
             //System.out.println("ZELI USERLIST");
             String userList = "";
             for (String s : list.keySet()) {
@@ -81,15 +85,20 @@ public class User {
             socket.emit(Identifier.USER_LIST, userList);
             return 0;
         };
-        Function<Serializable, Object> endListener = (data) -> {
+        Function<Object, Object> endListener = (data) -> {
             room.end();
             return 0;
         };
-        Function<Serializable, Object> exitListener = (data) -> {
+        Function<Object, Object> exitListener = (data) -> {
             list.remove(name);
             return 0;
         };
-        Function<Serializable, Object> emptyListener = (data) -> {
+        Function<Object, Object> disconnectListener = (data) -> {
+            System.out.println("Disconnected "+name);
+            list.remove(name);
+            return 0;
+        };
+        Function<Object, Object> emptyListener = (data) -> {
 
             return 0;
         };
@@ -100,6 +109,7 @@ public class User {
         socket.on(Identifier.REQUEST_USER_LIST, userListListener);
         socket.on(Identifier.END, endListener);
         socket.on(Identifier.EXIT, exitListener);
+        socket.on(Identifier.DISCONNECT, disconnectListener);
     }
 
     public MySocket getSocket() {
