@@ -3,7 +3,13 @@ package client;
 import model.Identifier;
 import socket.MySocket;
 
+import javax.crypto.Cipher;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.util.Base64;
 import java.util.Scanner;
 
 public class ClientMain {
@@ -12,8 +18,14 @@ public class ClientMain {
     private boolean speaking = false;
     private boolean waiting = false;
     private boolean incoming = false;
+    KeyPair keyPair;
+    String otherUserName;
+    PublicKey publicKey;
 
-    public ClientMain() throws IOException {
+    public ClientMain() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        keyPair = generator.generateKeyPair();
         MySocket mySocket = new MySocket("localhost", 2011);
         init(mySocket);
         loadEvents(mySocket);
@@ -25,6 +37,7 @@ public class ClientMain {
         String name = scanner.nextLine();
         this.name = name;
         socket.emit(Identifier.CONNECT, name);
+        socket.emit(Identifier.PUBLIC_KEY, keyPair.getPublic());
     }
 
     private void init(MySocket socket) {
@@ -103,18 +116,33 @@ public class ClientMain {
         });
 
         socket.on(Identifier.NEW_MESSAGE, (data) -> {
-            System.out.println(data);
+            //if(!(data instanceof bytes[] string)) return 0;
+            try {
+                Cipher decryptCipher = Cipher.getInstance("RSA");
+                decryptCipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+                byte[] decryptedMessageBytes = decryptCipher.doFinal((byte[]) data);
+                String decryptedMessage = new String(decryptedMessageBytes, StandardCharsets.UTF_8);
+                System.out.println(decryptedMessage);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
             return 0;
         });
 
         socket.on(Identifier.CHAT_REQUEST, (data) -> {
             incoming = true;
+            if(data instanceof String string)
+                otherUserName = string;
             System.out.println(data + " wants to start a conversation (/accept or /deny)");
             return 0;
         });
 
         socket.on(Identifier.CHAT_INIT, (data) -> {
-            System.out.println("Chat started with " + data);
+            System.out.println("Chat started with " + otherUserName);
+            if(!(data instanceof PublicKey publicKey)) return 0;
+            this.publicKey = publicKey;
+            System.out.println("Public key is "+publicKey);
             waiting = false;
             incoming = false;
             speaking = true;
@@ -125,6 +153,7 @@ public class ClientMain {
     private void start(MySocket socket) {
         Scanner scanner = new Scanner(System.in);
         String input = "";
+
 
         while (socket.isRunning() && !input.equalsIgnoreCase("kraj")) {
             input = scanner.nextLine();
@@ -148,8 +177,7 @@ public class ClientMain {
                             System.out.println("You do not have a name yet, please get one with \"/connect <name>\".");
                             break;
                         }
-
-                        socket.emit(Identifier.REQUEST_USER_LIST, null);
+                        socket.emit(Identifier.REQUEST_USER_LIST, 0);
                         break;
                     }
                     case "chat": {
@@ -180,6 +208,7 @@ public class ClientMain {
 
                         System.out.println("Chat request successfully sent, you can cancel it with \"/cancel\".");
                         waiting = true;
+                        otherUserName = args[1];
                         socket.emit(Identifier.CHAT, args[1]);
                         break;
                     }
@@ -193,7 +222,7 @@ public class ClientMain {
                             System.out.println("You haven't sent a conversation request, you can send one with \"/chat <name>\".");
                         }
 
-                        socket.emit(Identifier.CANCEL, null);
+                        socket.emit(Identifier.CANCEL, 0);
                         break;
                     }
                     case "accept": {
@@ -232,12 +261,12 @@ public class ClientMain {
                     }
                     case "end": {
 
-                        socket.emit(Identifier.END, null);
+                        socket.emit(Identifier.END, 0);
                         break;
                     }
                     case "exit": {
 
-                        socket.emit(Identifier.EXIT, null);
+                        socket.emit(Identifier.EXIT, 0);
                         break;
                     }
                 }
@@ -251,8 +280,18 @@ public class ClientMain {
                     System.out.println("You're not speaking with anybody, please use \"/chat <name>\" to send a request.");
                     continue;
                 }
+                try {
+                    String unencrypted = input;
+                    Cipher encryptCipher = Cipher.getInstance("RSA");
+                    encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+                    byte[] secretMessageBytes = unencrypted.getBytes(StandardCharsets.UTF_8);
+                    byte[] encryptedMessageBytes = encryptCipher.doFinal(secretMessageBytes);
+                    String encodedMessage = Base64.getEncoder().encodeToString(encryptedMessageBytes);
+                    socket.emit(Identifier.SEND_MESSAGE, encryptedMessageBytes);
+                }
+                catch (Exception e){
 
-                socket.emit(Identifier.SEND_MESSAGE, input);
+                }
             }
         }
     }

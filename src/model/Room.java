@@ -12,7 +12,7 @@ public class Room {
         users.add(u2);
     }
 
-    public void sendMessage(User sender, String message) {
+    public void sendMessage(User sender, byte[] message) {
         for (User user : users) {
             if (user == sender) continue;
             user.getSocket().emit(Identifier.NEW_MESSAGE, message);

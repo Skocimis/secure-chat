@@ -3,6 +3,7 @@ package model;
 import socket.MySocket;
 
 import java.io.Serializable;
+import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.function.Function;
 
@@ -11,7 +12,8 @@ public class User {
     private final String name;
     public static HashMap<String, User> list = new HashMap<>();
     private Room room;
-    private UserState state;//0 - connectedd
+    private UserState state;//0 - connected
+    private PublicKey publicKey;
 
     public User(MySocket socket, String name) throws Exception {
         if (list.get(name) != null) {
@@ -50,38 +52,38 @@ public class User {
                     otherUser.state = UserState.CONNECTED;
                     return chatReplyError(-2);
                 }
+                System.out.println("SALJEM CHAT INIT");
 
                 state = UserState.IN_CHAT;
                 otherUser.room = room;
                 otherUser.state = UserState.IN_CHAT;
-                System.out.println("CET POCEO");
 
-                socket.emit(Identifier.CHAT_INIT, otherUser.name);
-                otherUser.socket.emit(Identifier.CHAT_INIT, name);
+
+                socket.emit(Identifier.CHAT_INIT, otherUser.getPublicKey());
+                otherUser.socket.emit(Identifier.CHAT_INIT, getPublicKey());
+                System.out.println("POSLAO CHAT INIT "+otherUser.getPublicKey()+" "+getPublicKey());
                 return 0;
             });
             return 0;
         };
         Function<Object, Object> messageListener = (data) -> {
             if (state != UserState.IN_CHAT) return 0;
-            if (!(data instanceof String message)) return 0;
-            room.sendMessage(this, message);
+            //if (!(data instanceof String message)) return 0;
+            room.sendMessage(this, (byte[]) data);
             return 0;
         };
         Function<Object, Object> cancelListener = (data) -> {
-            System.out.println("STATE POSILJAOCA JE " + state);
             if (state != UserState.SENT_REQUEST) return socket.emit(Identifier.CANCELED, -1);
             room.cancelRequest(this);
             socket.emit(Identifier.CANCELED, 0);
             return 0;
         };
         Function<Object, Object> userListListener = (data) -> {
-            //System.out.println("ZELI USERLIST");
             String userList = "";
             for (String s : list.keySet()) {
                 userList += s + "\n";
             }
-            //System.out.println("USERLIST JE NA SERVERU "+userList);
+            userList = userList.substring(0, userList.length()-1);
             socket.emit(Identifier.USER_LIST, userList);
             return 0;
         };
@@ -98,6 +100,12 @@ public class User {
             list.remove(name);
             return 0;
         };
+        Function<Object, Object> publicKeyListener = (data) -> {
+            System.out.println("DATA JE "+data);
+            if(!(data instanceof PublicKey publicKey)) return 0;
+            setPublicKey(publicKey);
+            return 0;
+        };
         Function<Object, Object> emptyListener = (data) -> {
 
             return 0;
@@ -109,6 +117,7 @@ public class User {
         socket.on(Identifier.REQUEST_USER_LIST, userListListener);
         socket.on(Identifier.END, endListener);
         socket.on(Identifier.EXIT, exitListener);
+        socket.on(Identifier.PUBLIC_KEY, publicKeyListener);
         socket.on(Identifier.DISCONNECT, disconnectListener);
     }
 
@@ -130,5 +139,13 @@ public class User {
 
     public void setSocket(MySocket socket) {
         this.socket = socket;
+    }
+
+    public void setPublicKey(PublicKey publicKey) {
+        this.publicKey = publicKey;
+    }
+
+    public PublicKey getPublicKey() {
+        return publicKey;
     }
 }
