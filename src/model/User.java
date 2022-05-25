@@ -88,20 +88,16 @@ public class User {
             return 0;
         };
         Function<Object, Object> endListener = (data) -> {
-            room.end();
-            return 0;
-        };
-        Function<Object, Object> exitListener = (data) -> {
-            list.remove(name);
+            room.end(this);
             return 0;
         };
         Function<Object, Object> disconnectListener = (data) -> {
+            socket.emit(Identifier.DISCONNECT, 0);
             System.out.println("Disconnected " + name);
             list.remove(name);
             return 0;
         };
         Function<Object, Object> publicKeyListener = (data) -> {
-            System.out.println("DATA JE "+data);
             if(!(data instanceof PublicKey publicKey)) return 0;
             setPublicKey(publicKey);
             return 0;
@@ -116,7 +112,7 @@ public class User {
         socket.on(Identifier.CANCEL, cancelListener);
         socket.on(Identifier.REQUEST_USER_LIST, userListListener);
         socket.on(Identifier.END, endListener);
-        socket.on(Identifier.EXIT, exitListener);
+        //socket.on(Identifier.EXIT, exitListener);
         socket.on(Identifier.PUBLIC_KEY, publicKeyListener);
         socket.on(Identifier.DISCONNECT, disconnectListener);
     }

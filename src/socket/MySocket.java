@@ -40,6 +40,7 @@ public class MySocket {
     }
 
 
+
     public boolean isRunning() {
         return socketListenerThread.isRunning();
     }

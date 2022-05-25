@@ -101,7 +101,6 @@ public class SocketListenerThread implements Runnable {
                 e.printStackTrace();
             }
         }
-
     }
 
     protected void runMain() throws Exception {

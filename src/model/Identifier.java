@@ -17,8 +17,6 @@ public enum Identifier {
     DISCONNECT,
     END,
     CHAT_ENDED,
-    EXIT,
-    EXIT_SUCCESS,
     EMPTY,
     PUBLIC_KEY
 }

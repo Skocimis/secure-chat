@@ -19,11 +19,11 @@ public class Room {
         }
     }
 
-    public void end() {
+    public void end(User ending) {
         for (User user : users) {
             user.setState(UserState.CONNECTED);
             user.setRoom(null);
-            user.getSocket().emit(Identifier.CHAT_ENDED, 0);
+            user.getSocket().emit(Identifier.CHAT_ENDED, ending==user);
         }
     }
 
